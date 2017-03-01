@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+	<title>Interface Gráfica</title>
+	<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+    <link rel="stylesheet" href="joint.css" />
+    <link rel="stylesheet" href="index.css" />
+    <link rel="stylesheet" href="jquery-ui.css" />
+    
+    <script src="jquery.min.js"></script>
+    <script src="lodash.min.js"></script>
+    <script src="backbone-min.js"></script>
+    <script src="joint.js"></script>
+    <script src="joint.shapes.erd.js"></script>
+    
+    <script src="jquery-ui.js"></script>
+</head>
+    
+<body>
+    
+    <div id="barraEsquerda">
+        <div id="entidade" class="botaoEsquerda">
+            <img src="res/entidade.png" alt="Entidade">
+        </div>
+        <div id="atributo" class="botaoEsquerda">
+            <img src="res/atributo.png" alt="Atributo">
+        </div>
+        <div id="relacionamento" class="botaoEsquerda">
+            <img src="res/relacionamento.png" alt="Relacionamento">
+        </div>
+        <div id="conectar" class="botaoEsquerda">
+            <img src="res/conectar.png" alt="Conectar">
+        </div>
+    </div>
+
+    <div id="areaGrafica"></div>
+    
+    <div id="lateralDireita">
+        <div id="tutorial">
+            <h1>Olá!</h1>
+            <p>Para inserir um elemento, arraste-o para a área ao lado.</p>
+            <p>Atributos só podem ser inseridos em entidades.</p>
+            <p>Para conectar uma entidade e um relacionamento, arraste o conectar até um dos elementos e repita o processo para o outro elemento.</p>
+            <p>Clique em um elemento para editá-lo.</p>
+        </div>
+        <div id="painelEditar">
+            <h1>Editar <span id="tipoEdit">Tipo</span></h1>
+            <form>
+                Nome:
+                <input type="text" name="nomeEdit" id="nomeEdit">
+                <br>
+            </form>
+            <br>
+            <button onclick="cancelaEdit()" type="button">Cancelar</button>
+            <button onclick="confirmaEdit(document.getElementById('nomeEdit').value)" type="button">Salvar alterações</button>
+            <br>
+            <br>
+            <button onclick="deletaElementoSelecionado()" type="button">Deletar</button>
+        </div>
+    </div>
+    
+    <script type="text/javascript">
+      
+        //variável auxiliar para conectar entidades e relacionamentos
+        var tempConectar = -1;
+        
+        //variável auxiliar para alterar dados dos elementos
+        var idElementoSelecionado;
+      
+        var erd = joint.shapes.erd;
+        var graph = new joint.dia.Graph();
+        var paper = new joint.dia.Paper({
+            el: $('#areaGrafica'),
+            width: 724,
+            height: 600,
+            gridSize: 1,
+            model: graph,
+            linkPinning: false,
+            linkConnectionPoint: joint.util.shapePerimeterConnectionPoint
+        });
+        
+      
+        //função que conecta dois elementos
+        criaLink = function(elemento1, elemento2) {
+            var novoLink = new erd.Line({
+                source: { id: elemento1.id },
+                target: { id: elemento2.id }
+            });
+            return novoLink.addTo(graph);
+        };
+
+        $(".botaoEsquerda").draggable ({
+            helper : "clone",
+            cursor: "move",
+            stop: function( event, ui ) {
+                var offset = $("#areaGrafica").offset();
+                var posX = event.pageX - offset.left;
+                var posY = event.pageY - offset.top;
+                var tipoElemento = event.target.id;
+                criarElemento(posX, posY, tipoElemento);
+            }
+        });
+
+        function criarElemento(posX, posY, tipoElemento){
+            if(tipoElemento === "entidade"){
+                var novaEntidade = new erd.Entity({
+                    position: { x: posX, y: posY },
+                    attrs: {
+                        text: {
+                            fill: '#ffffff',
+                            text: 'Entidade',
+                            'letter-spacing': 0,
+                            style: { 'text-shadow': '1px 0 1px #333333' }
+                        },
+                        '.outer, .inner': {
+                            fill: '#31d0c6',
+                            stroke: 'none',
+                            filter: { name: 'dropShadow',  args: { dx: 0.5, dy: 2, blur: 2, color: '#333333' }}
+                        }
+                    }
+                    })
+                novaEntidade.prop('tipo','entidade')
+                graph.addCell(novaEntidade)
+            } else if (tipoElemento === "atributo"){
+                var elementosNoPonto = graph.findModelsFromPoint({ x: posX, y: posY });
+                if(elementosNoPonto.length > 0){
+                    var elementoEscolhido = graph.getCell(elementosNoPonto[0].id);
+                    if(elementoEscolhido.prop('tipo')==="entidade"){
+                        var novoAtributo = new erd.Normal({
+                        position: { x: posX, y: posY },
+                        attrs: {
+                            text: {
+                                fill: '#ffffff',
+                                text: 'Atributo',
+                                'letter-spacing': 0,
+                                style: { 'text-shadow': '1px 0 1px #333333' }
+                            },
+                            '.outer': {
+                                fill: '#fe8550',
+                                stroke: '#fe854f',
+                                filter: { name: 'dropShadow',  args: { dx: 0, dy: 2, blur: 2, color: '#222138' }}
+                            }
+                        }
+                        });
+                        novoAtributo.prop('tipo','atributo')
+                        elementoEscolhido.embed(novoAtributo)
+                        graph.addCell(novoAtributo)
+                        criaLink(elementoEscolhido, novoAtributo);
+                    }
+                }
+            } else if (tipoElemento === "relacionamento"){
+                var novoRelacionamento = new erd.Relationship({
+                    position: { x: posX, y: posY },
+                    attrs: {
+                        text: {
+                            fill: '#ffffff',
+                            text: 'Relacionamento',
+                            'letter-spacing': 0,
+                            style: { 'text-shadow': '1px 0 1px #333333' }
+                        },
+                        '.outer': {
+                            fill: '#797d9a',
+                            stroke: 'none',
+                            filter: { name: 'dropShadow',  args: { dx: 0, dy: 2, blur: 1, color: '#333333' }}
+                        }
+                    }
+                });
+                graph.addCell(novoRelacionamento)
+                novoRelacionamento.prop('tipo','relacionamento')
+            } else if (tipoElemento === "conectar"){
+                var elementosNoPonto = graph.findModelsFromPoint({ x: posX, y: posY });
+                if(elementosNoPonto.length > 0){
+                    if(tempConectar===-1){
+                        tempConectar = elementosNoPonto[0].id;
+                    } else {
+                        var primeiro = graph.getCell(tempConectar);
+                        var segundo = graph.getCell(elementosNoPonto[0].id);
+                        if((primeiro.prop('tipo')==="entidade" && segundo.prop('tipo')==="relacionamento")
+                            || (segundo.prop('tipo')==="entidade" && primeiro.prop('tipo')==="relacionamento")){
+                            criaLink(primeiro, segundo);
+                        }
+                        tempConectar = -1;
+                    }
+                }
+            }
+        }
+ 
+      //Ações quando o mouse clica em um elemento
+        paper.on('cell:pointerclick',function(cellView, evt, x, y) {
+                document.getElementById("tutorial").style.visibility = "hidden";
+                idElementoSelecionado = cellView.model.id;
+                var elemento = graph.getCell(idElementoSelecionado);
+                document.getElementById("nomeEdit").value = elemento.attr('text/text');
+                document.getElementById("tipoEdit").innerHTML = elemento.prop('tipo');
+                document.getElementById("painelEditar").style.visibility = "visible";
+                
+        })
+      
+        //Ação quando o mouse clica em uma área vazia
+        paper.on('blank:pointerclick', function(evt, x, y){
+            cancelaEdit()
+        })
+      
+        //funções relacionadas com a alteração dos elementos
+        function cancelaEdit(){
+            document.getElementById("painelEditar").style.visibility = "hidden";
+            document.getElementById("tutorial").style.visibility = "visible"; 
+        }
+
+        function deletaElementoSelecionado(){
+            var elemento = graph.getCell(idElementoSelecionado);
+            elemento.remove();
+            cancelaEdit()
+        }
+        
+        function confirmaEdit(novoNome){
+            var elemento = graph.getCell(idElementoSelecionado);
+            elemento.attr('text/text', novoNome)
+            cancelaEdit()
+        }
+  </script>
+</body>
+</html>
