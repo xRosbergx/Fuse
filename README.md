@@ -6,3 +6,4 @@
   Para geração dos elementos gráficos referentes ao diagrama entidade-relacionamento, este protótipo faz uso da biblioteca JointJS.
 
 
+###  http://xrosbergx.github.io/Prototipo-interface-grafica-DER/
